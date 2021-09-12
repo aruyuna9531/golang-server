@@ -1,11 +1,5 @@
 #include <muduo/net/TcpServer.h>
 
-#include <muduo/base/AsyncLogging.h>
-#include <muduo/base/Logging.h>
-#include <muduo/base/Thread.h>
-#include <muduo/net/EventLoop.h>
-#include <muduo/net/InetAddress.h>
-
 #include <functional>
 #include <utility>
 
@@ -49,9 +43,9 @@ int main(int argc, char* argv[])
   InetAddress listenAddr(8000, false);
   EchoServer server(&loop, listenAddr);
 
-  // 这里printf没法输出内容到terminal，cout就行，为啥
   
   server.start();
+  // 这里printf没法输出内容到terminal，cout就行，为啥
   std::cout << "starting server on port 8000" << std::endl;
 
   loop.loop();
