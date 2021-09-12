@@ -1,3 +1,4 @@
+// 一个测试TCP服务的Demo，go run client.go
 package main
 
 import (
