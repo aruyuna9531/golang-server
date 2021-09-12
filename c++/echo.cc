@@ -12,49 +12,10 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include "echo_server.h"
+
 using namespace muduo;
 using namespace muduo::net;
-
-class EchoServer
-{
- public:
-  EchoServer(EventLoop* loop, const InetAddress& listenAddr)
-    : loop_(loop),
-      server_(loop, listenAddr, "EchoServer")
-  {
-    server_.setConnectionCallback(
-        std::bind(&EchoServer::onConnection, this, _1));
-    server_.setMessageCallback(
-        std::bind(&EchoServer::onMessage, this, _1, _2, _3));
-  }
-
-  void start()
-  {
-    server_.start();
-  }
-
- private:
-  void onConnection(const TcpConnectionPtr& conn);
-
-  void onMessage(const TcpConnectionPtr& conn, Buffer* buf, Timestamp time);
-
-  EventLoop* loop_;
-  TcpServer server_;
-};
-
-void EchoServer::onConnection(const TcpConnectionPtr& conn)
-{
-  LOG_TRACE << conn->peerAddress().toIpPort() << " -> "
-            << conn->localAddress().toIpPort() << " is "
-            << (conn->connected() ? "UP" : "DOWN");
-}
-
-void EchoServer::onMessage(const TcpConnectionPtr& conn, Buffer* buf, Timestamp time)
-{
-  string msg(buf->retrieveAllAsString());
-  LOG_TRACE << conn->name() << " recv " << msg.size() << " bytes at " << time.toString();
-  conn->send(msg);
-}
 
 int kRollSize = 500*1000*1000;
 
