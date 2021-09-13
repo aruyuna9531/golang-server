@@ -1,15 +1,16 @@
-libs=-lmuduo_net -lmuduo_base -lpthread
+MUDUO_DIRECTORY ?= /usr/local
+MUDUO_INCLUDE = $(MUDUO_DIRECTORY)/include
+MUDUO_LIBRARY = $(MUDUO_DIRECTORY)/lib
+SRC = .
 
-obj=echo.o echo_server.o
+CXXFLAGS = -g -O0 -I$(MUDUO_INCLUDE)
 
-server : $(obj)
-	g++ -o server $(obj) $(libs)
+LDFLAGS =  -L$(MUDUO_LIBRARY) -lmuduo_http -lmuduo_net -lmuduo_base -lpthread -lrt
 
-echo.o : echo.cpp
-	g++ -c echo.cpp
-
-echo_server.o : echo_server.cpp
-	g++ -c echo_server.cpp
+server: $(SRC)/*.cpp
+	g++ $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 clean:
-	rm -rf server* $(obj)
+	rm -f echo core *.o
+
+.PHONY: all clean
