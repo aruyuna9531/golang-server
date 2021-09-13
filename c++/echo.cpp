@@ -30,11 +30,36 @@ void setLogging(const char* argv0)
   g_asyncLog->start();
 }
 
+static void onRequest(const HttpRequest& req, HttpResponse* resp)
+{
+  std::string query = req.query();
+  std::string body = req.body();
+  std::string path = req.path();
+
+  cout << "path = " << path << ", query = " << query << ", body = " << body;
+}
+
+void http_loop()
+{
+  EventLoop loop;
+  InetAddress http_listenAddr(static_cast<short>(8001));
+  HttpServer http_server(&loop, http_listenAddr, "http");
+  http_server.setHttpCallback(onRequest);
+  http_server.setThreadNum(1);
+  loop.loop();
+}
+
 int main(int argc, char* argv[])
 {
   setLogging(argv[0]);
 
   LOG_INFO << "pid = " << getpid() << ", tid = " << CurrentThread::tid();
+
+  // 子线程：http
+  muduo::Thread http_thread((const muduo::Thread::ThreadFunc)boost::bind(&http_loop));
+  http_thread.start();
+
+  // 主线程：tcp
   EventLoop loop;
   // 笔记：InetAddress
   // 参数1(port) 监听端口号
@@ -42,7 +67,6 @@ int main(int argc, char* argv[])
   // 参数3(ipv6) 是否使用IPv6协议
   InetAddress listenAddr(8000, false);
   EchoServer server(&loop, listenAddr);
-
   
   server.start();
   // 这里printf没法输出内容到terminal，cout就行，为啥
