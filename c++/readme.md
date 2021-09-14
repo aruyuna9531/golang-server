@@ -10,6 +10,8 @@
 
 注意muduo源码要放在/usr/local/include、muduo动态lib要放在/usr/local/lib
 
+如果放到别处，makefile第1行要改成对应目录
+
 然后make就行了，makefile我已经写好了
 
 make完在bin目录下执行server文件即可
