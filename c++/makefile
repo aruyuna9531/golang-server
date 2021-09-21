@@ -12,6 +12,6 @@ $(DST): $(SRC)/*.cpp
 	g++ $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 clean:
-	rm -f echo core *.o
+	rm -f $(SRC)/*.o $(DST)
 
 .PHONY: all clean
