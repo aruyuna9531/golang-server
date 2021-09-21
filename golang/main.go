@@ -5,11 +5,17 @@ import (
 
 	"main/myhttp"
 	"main/mytcp"
+	"main/zookeeper"
 )
 
 func main() {
 	fmt.Println("Hello!")
 
-	mytcp.CreateTcpServer()
-	myhttp.CreateHttpServer()
+	go mytcp.CreateTcpServer(9000)
+	go myhttp.CreateHttpServer(9001)
+	go zookeeper.LinkZookeeper()
+
+	for {
+
+	}
 }

@@ -3,6 +3,7 @@ package mytcp
 import (
 	"fmt"
 	"net"
+	"strconv"
 )
 
 func handleConnection(conn net.Conn) {
@@ -18,11 +19,20 @@ func handleConnection(conn net.Conn) {
 	fmt.Printf("string: %s, bytes: %s\n", addr.String(), string(readbytes[:readSize]))
 }
 
-func CreateTcpServer() {
-	ln, err := net.Listen("tcp", "0.0.0.0:8080")
+func CreateTcpServer(port int) {
+	fmt.Println("creating tcp server at port " + strconv.Itoa(port) + "...")
+	ln, err := net.Listen("tcp", "0.0.0.0:" + strconv.Itoa(port))
 	if err != nil {
 		// handle error
+		fmt.Println("Error: " + err.Error())
+		return
 	}
+
+	if ln == nil {
+		fmt.Println("Error: socket is nil")
+		return
+	}
+
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
