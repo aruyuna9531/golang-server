@@ -4,6 +4,7 @@
 #include <string>
 #include <sstream>
 #include <time.h>
+#include "common.h"
 
 std::string getTime()
 {
@@ -21,6 +22,14 @@ std::string getTime()
 
     std::ostringstream oss;
     oss << std::string(s) << "." << time.tv_usec;
+    return oss.str();
+}
+
+template<typename T>
+std::string toString(const T& value)
+{
+    std::ostringstream oss;
+    oss << value;
     return oss.str();
 }
 #endif

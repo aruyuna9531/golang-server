@@ -9,8 +9,14 @@
 #include <iostream>
 #include <unistd.h>
 
+#include <log4cplus/logger.h>
+#include <log4cplus/loggingmacros.h>
+#include <log4cplus/configurator.h>
+#include <log4cplus/initializer.h>
+
 #include "tcp_server.h"
 #include "http_server.h"
+#include "common.h"
 
 using namespace boost;
 using namespace muduo;
@@ -36,7 +42,24 @@ void setLogging(const char* argv0)
 
 int main(int argc, char* argv[])
 {
+  if (argc < 2)
+  {
+    std::cerr << "usage: " << argv[0] << " [log4cplus_conf]" << std::endl;
+    return -1;
+  }
+
   setLogging(argv[0]);
+
+  // log4cplus init start
+  log4cplus::initialize();
+
+  log4cplus::BasicConfigurator config;
+  config.configure();
+
+  log4cplus::PropertyConfigurator::doConfigure(LOG4CPLUS_TEXT(argv[1]));
+  // log4cplus init end
+
+  LOG4CPLUS_INFO(log, "helloworld");
 
   LOG_INFO << "pid = " << getpid() << ", tid = " << CurrentThread::tid();
 

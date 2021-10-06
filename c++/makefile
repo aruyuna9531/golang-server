@@ -1,15 +1,17 @@
-MUDUO_DIRECTORY ?= /usr/local
-MUDUO_INCLUDE = $(MUDUO_DIRECTORY)/include
-MUDUO_LIBRARY = $(MUDUO_DIRECTORY)/lib
+REF_DIRECTORY ?= /usr/local
+REF_INCLUDE = $(REF_DIRECTORY)/include
+REF_LIBRARY = $(REF_DIRECTORY)/lib
+
 SRC = ./src
 DST = ./bin/server
 
-CXXFLAGS = -g -O0 -I$(MUDUO_INCLUDE)
+CXXFLAGS = -g -O0 -I$(REF_INCLUDE) -I./references/log4cplus
 
-LDFLAGS =  -L$(MUDUO_LIBRARY) -lmuduo_http -lmuduo_net -lmuduo_base -lpthread -lrt
+LDFLAGS =  -L$(REF_LIBRARY) -lmuduo_http -lmuduo_net -lmuduo_base -lpthread -lcurl -llog4cplus -lrt
 
 $(DST): $(SRC)/*.cpp
-	g++ $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+	g++ -std=c++17 -O3 $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+# log4cplus需要c++17支持
 
 clean:
 	rm -f $(SRC)/*.o $(DST)
