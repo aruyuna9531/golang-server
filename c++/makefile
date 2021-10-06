@@ -4,6 +4,7 @@ REF_LIBRARY = $(REF_DIRECTORY)/lib
 
 SRC = ./src
 DST = ./bin/server
+LOG = ./log
 
 CXXFLAGS = -g -O0 -I$(REF_INCLUDE) -I./references/log4cplus
 
@@ -14,6 +15,6 @@ $(DST): $(SRC)/*.cpp
 # log4cplus需要c++17支持
 
 clean:
-	rm -f $(SRC)/*.o $(DST)
+	rm -f $(SRC)/*.o $(DST) $(LOG)/*
 
 .PHONY: all clean

@@ -12,21 +12,33 @@ void tcp_loop(int port)
   MyTcpServer server(&loop, listenAddr);
   
   server.start();
-  // 这里printf没法输出内容到terminal，cout就行，为啥
-  std::cout << "starting tcp server on port " << port << ", now no tcp service available" << std::endl;
+  LOG4CPLUS_INFO(log, "TCP服务已在" << port << "启动");
   loop.loop();
 }
 
 void MyTcpServer::onConnection(const TcpConnectionPtr& conn)
 {
-  LOG_TRACE << conn->peerAddress().toIpPort() << " -> "
+  bool connected = conn->connected();
+  std::string remote_addr = conn->peerAddress().toIpPort();
+  LOG_TRACE << remote_addr << " -> "
             << conn->localAddress().toIpPort() << " is "
-            << (conn->connected() ? "UP" : "DOWN");
+            << (connected ? "UP" : "DOWN");
+  
+  if (connected)
+  {
+    LOG4CPLUS_INFO(log, "TCP接收到来自" << remote_addr << "的远程连接");
+  }
+  else
+  {
+    LOG4CPLUS_INFO(log, "TCP已从" << remote_addr << "断开");
+    //TODO 断开之后干什么
+  }
 }
 
 void MyTcpServer::onMessage(const TcpConnectionPtr& conn, Buffer* buf, Timestamp time)
 {
   string msg(buf->retrieveAllAsString());
-  LOG_TRACE << conn->name() << " recv " << msg.size() << " bytes at " << time.toString();
-  conn->send(msg);
+  // LOG_TRACE << conn->name() << " recv " << msg.size() << " bytes at " << time.toString();
+  LOG4CPLUS_TRACE(log, "接收到来自" << conn->peerAddress().toIpPort() << "的信息：[" << msg << "]");
+  conn->send("this is a return from tcp server(c++)");
 }

@@ -9,11 +9,6 @@
 #include <iostream>
 #include <unistd.h>
 
-#include <log4cplus/logger.h>
-#include <log4cplus/loggingmacros.h>
-#include <log4cplus/configurator.h>
-#include <log4cplus/initializer.h>
-
 #include "tcp_server.h"
 #include "http_server.h"
 #include "common.h"
@@ -58,8 +53,6 @@ int main(int argc, char* argv[])
 
   log4cplus::PropertyConfigurator::doConfigure(LOG4CPLUS_TEXT(argv[1]));
   // log4cplus init end
-
-  LOG4CPLUS_INFO(log, "helloworld");
 
   LOG_INFO << "pid = " << getpid() << ", tid = " << CurrentThread::tid();
 

@@ -8,17 +8,25 @@ void http_loop(int port)
   http_server.setHttpCallback(onRequest);
   http_server.setThreadNum(1);
   http_server.start();
-  std::cout << "listening http in port " << port << ", you can try an http request as \"http://127.0.0.1:" << port << "/hello\"" << std::endl;
+  LOG4CPLUS_INFO(log, "HTTP服务器在" << port << "开启，可以尝试请求\"http://127.0.0.1:" << port << "/hello\"");
   loop.loop();
 }
 
 void onRequest(const HttpRequest& req, HttpResponse* resp)
 {
-  std::cout << "http request accepted" << std::endl;
+  LOG4CPLUS_INFO(log, "接收到HTTP请求");
 
   std::string query = req.query();
   // std::string body = req.body();
   std::string path = req.path();
 
-  std::cout << "path = " << path << ", query = " << query << std::endl;
+  LOG4CPLUS_INFO(log, "path = " << path << ", query = " << query);
+
+  //回写响应
+  resp->setStatusCode(HttpResponse::k200Ok);
+  resp->setStatusMessage("OK");
+  resp->setContentType("text/html");
+  resp->addHeader("Content-Type", "text/html");
+  resp->addHeader("Connection", "close");
+  resp->setBody("this is a return from http server(c++)");
 }
