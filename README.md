@@ -1,17 +1,8 @@
 # SimpleServer
 
-服务器的简单模板集合，以后有用时直接拿出来用
+golang 基本服务器代码
 
-TODO 逐步整理mysql、redis等DB相关代码
-
-测试组件版本：
-MySQL 8.0.26
-Redis 6.2.5
-Zookeeper 3.7.0
-
-| 目录  | 使用语言 | 支持启动TCP服务 | 支持启动HTTP服务 | 支持连接MySQL | 支持连接Redis | 支持连接Zookeeper | 使用编译器 |
-|-------|---------|-----------------|-----------------|--------------|---------------|------------------|-----------|
-| c++   | c++     | √               | √               | ×            | ×             | ×                | g++ 9.3.0 |
-| java  | java    | ×               | ×               | ×            | ×             | ×                | java 17 |
-| golang | golang | √               | √               | √            | ×             | √                | go 1.17.1 |
-| node.js| node.js| ×               | √               | ×            | ×             | ×                | node 16.9.0 |
+如果运行失败，可以输入
+```shell
+go env -w GOPROXY=https://goproxy.cn
+```

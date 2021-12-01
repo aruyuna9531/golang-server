@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 
-	"main/myhttp"
-	"main/mytcp"
-	"main/zookeeper"
-	"main/db"
+	"go_svr/myhttp"
+	"go_svr/mytcp"
+	"go_svr/zookeeper"
+	"go_svr/db"
 	"io/ioutil"
 	"encoding/json"
 	"os"
