@@ -1,6 +1,3 @@
-// 这里需要下载 https://github.com/samuel/go-zookeeper 的zookeeper库，并把里面的zk目录放到GOROOT里
-// 目前先把demo搬过来
-
 package zookeeper
 
 import (
