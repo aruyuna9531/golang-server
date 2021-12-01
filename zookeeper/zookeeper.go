@@ -6,7 +6,7 @@ package zookeeper
 import (
 	"fmt"
 	"time"
-	"zk"
+	"github.com/go-zookeeper/zk"
 	"strconv"
 	"encoding/json"
 )
