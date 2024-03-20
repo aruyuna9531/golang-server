@@ -60,6 +60,7 @@ func main() {
 	go mytcp.GetTcpSvr().OnLoop()
 
 	//go myhttp.CreateHttpServer(ServerConf.HttpPort)
+	timer.TimerTestCode()
 
 	tk := time.NewTicker(1 * time.Second)
 	defer tk.Stop()

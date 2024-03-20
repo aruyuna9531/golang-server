@@ -37,6 +37,14 @@ func GetTcpSvr() *TcpServer {
 	return tcpSvr
 }
 
+// 服务器的主动推送
+func (ts *TcpServer) PushNotify(msg string) {
+	log.Debug("pushing notify to all clients, msg: %s", msg)
+	for _, conn := range ts.conns {
+		conn.conn.Write([]byte(msg))
+	}
+}
+
 func (ts *TcpServer) GetMsgChan() <-chan *ClientPack {
 	return ts.clientMsgs
 }

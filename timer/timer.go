@@ -2,6 +2,7 @@ package timer
 
 import (
 	"fmt"
+	"go_svr/mytcp"
 	"log"
 	"time"
 )
@@ -66,16 +67,9 @@ func PushTriggerAfterDelay(delay time.Duration, trigger Trigger) {
 func TimerTestCode() {
 	PushTrigger(time.Now().Add(20*time.Second).Format("2006-01-02 15:04:05"), Trigger{
 		Fun: func(now int64, a interface{}) {
-			tt := time.Unix(now, 0)
-			fmt.Printf("now: %s, param: %v", tt.Format("2006-01-02 15:04:05"), a)
+			// 在服务器启动第20秒给所有连接的客户端一个推送
+			mytcp.GetTcpSvr().PushNotify(fmt.Sprintf("%v", a))
 		},
 		Param: "程序已启动20秒",
-	})
-	PushTrigger(time.Now().Add(30*time.Second).Format("2006-01-02 15:04:05"), Trigger{
-		Fun: func(now int64, a interface{}) {
-			tt := time.Unix(now, 0)
-			fmt.Printf("now: %s, param: %v", tt.Format("2006-01-02 15:04:05"), a)
-		},
-		Param: "程序已启动30秒",
 	})
 }
