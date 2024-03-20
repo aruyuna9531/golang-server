@@ -1,18 +1,20 @@
+// deprecated: kubernetes似乎能更好地承担zookeeper的功能，目前精力会放在那东西的学习上，这里可能不会再更新（2024.3）
+
 package zookeeper
 
 import (
+	"encoding/json"
 	"fmt"
-	"time"
 	"github.com/go-zookeeper/zk"
 	"strconv"
-	"encoding/json"
+	"time"
 )
 
 type ZkConf struct {
-	Addr		[]string	`json:"addr"`
-	ServerId	int			`json:"svr_id"`
-	HttpListen	int			`json:"http"`
-	TcpListen	int			`json:"tcp"`
+	Addr       []string `json:"addr"`
+	ServerId   int      `json:"svr_id"`
+	HttpListen int      `json:"http"`
+	TcpListen  int      `json:"tcp"`
 }
 
 // e的数据类型：zk.Event，结构如下
@@ -49,17 +51,17 @@ func listenChildNode(path string) {
 		// 返回参数3 ch：一个channel，监听节点存在事件变化时会传入数据
 		// 返回参数4 err：抛出错误
 		// 这行不能放到循环外，否则会出现死循环（StateDisconnected）
-	
+
 		if err != nil {
 			fmt.Println("error, " + err.Error())
 			return
 		}
-		
+
 		fmt.Printf("children list：%+v\n", children)
 		e := <-ch
 
 		switch e.Type {
-			// ChildrenW不监听Created
+		// ChildrenW不监听Created
 		case zk.EventNodeDeleted:
 			// 节点自己被删除了
 			fmt.Printf("znode %s self deleted, by ChildrenW(exit peacefully)\n", path)
@@ -95,17 +97,17 @@ func listenSelfValue(path string) {
 		// 返回参数3 ch：一个channel，监听节点存在事件变化时会传入数据
 		// 返回参数4 err：抛出错误
 		// 这行不能放到循环外，否则会出现死循环（StateDisconnected）
-	
+
 		if err != nil {
 			fmt.Println("error, " + err.Error())
 			return
 		}
-		
+
 		fmt.Printf("new value is：%+v\n", string(value))
 		e := <-ch
 
 		switch e.Type {
-			// GetW不监听Created和ChildrenChange
+		// GetW不监听Created和ChildrenChange
 		case zk.EventNodeDeleted:
 			// 节点自己被删除了
 			fmt.Printf("znode %s self deleted, by GetW(exit peacefully)\n", path)
@@ -147,12 +149,12 @@ func listenNode(path string) {
 		// 返回参数3 ch：一个channel，监听节点存在事件变化时会传入数据
 		// 返回参数4 err：抛出错误
 		// 这行不能放到循环外，否则会出现死循环（StateDisconnected）
-	
+
 		if err != nil {
 			fmt.Println("error, " + err.Error())
 			return
 		}
-		
+
 		fmt.Printf("exist：%+v，stat：%+v\n", exist, stat)
 		e := <-ch
 
@@ -180,7 +182,7 @@ func listenNode(path string) {
 }
 
 func DeleteSelfZnode() {
-	c.Close()	//断开连接时所有创建的临时节点会被立即删除
+	c.Close() //断开连接时所有创建的临时节点会被立即删除
 }
 
 func LinkZookeeper(conf *ZkConf) {
@@ -204,8 +206,8 @@ func LinkZookeeper(conf *ZkConf) {
 	if _, err = c.Create(createZkPath(conf.ServerId), zkValueStr, zk.FlagEphemeral, zk.WorldACL(zk.PermAll)); err != nil {
 		fmt.Println("error, cannot create self znode:" + err.Error())
 		return
-	} 
-	
+	}
+
 	// addWatch需要的节点
 	go listenNode("/gosvr")
 }
