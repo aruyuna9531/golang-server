@@ -140,7 +140,7 @@ func (ts *TcpServer) handleConnection(conn net.Conn) {
 		if u, e := ts.conns[sessionId]; e {
 			ts.clientMsgs <- &ClientPack{
 				SessionId: u.SessionId,
-				Msg:       js,
+				Msg:       ld.Msg,
 			}
 		} else {
 			log.Error("illegal connection source: %s", addr.String())

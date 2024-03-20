@@ -83,7 +83,7 @@ func main() {
 				return
 			default:
 				b := make([]byte, 10)
-				for i := 0; i < 10; i++ {
+				for i := 0; i < 9; i++ {
 					b[i] = byte(rand.Int()%10) + 'a'
 				}
 				cl.Send(b)
