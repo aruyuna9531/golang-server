@@ -39,7 +39,7 @@ func GetTcpSvr() *TcpServer {
 
 // 服务器的主动推送
 func (ts *TcpServer) PushNotify(msg string) {
-	log.Debug("pushing notify to all clients, msg: %s", msg)
+	log.Debug("pushing notify to all clients, msg: %s, receive clients: %d", msg, len(ts.conns))
 	for _, conn := range ts.conns {
 		conn.conn.Write([]byte(msg))
 	}
@@ -50,18 +50,32 @@ func (ts *TcpServer) GetMsgChan() <-chan *ClientPack {
 }
 
 func (ts *TcpServer) handleConnection(conn net.Conn) {
-	defer conn.Close()
+	connCloseAcq := true
+	defer func() {
+		if connCloseAcq {
+			err := conn.Close()
+			if err != nil {
+				log.Error("handleConnection close client error: %s", err.Error())
+			}
+		}
+	}()
 	defer delete(ts.conns, conn.RemoteAddr().String())
 	readbytes := make([]byte, 1024)
 	for {
 		readSize, err := conn.Read(readbytes)
 		if err != nil {
-			if errors.Is(err, io.EOF) {
-				// client主动发起关闭
-				log.Printf("client actively closed")
+			if isEof(err) {
+				// client主动发起的关闭
+				log.Info("client actively closed")
 				return
 			}
-			log.Printf("client read error: " + err.Error())
+			if isNetClosedErr(err) {
+				// 服务器在其他地方主动关闭了connection（比如OnClose）导致Read阻塞解除并返回error
+				log.Error("connection already closed")
+				connCloseAcq = false
+				return
+			}
+			log.Error("client read error: " + err.Error())
 			return
 		}
 		js := readbytes[:readSize]
@@ -71,14 +85,14 @@ func (ts *TcpServer) handleConnection(conn net.Conn) {
 			ld := &ClientLogin{}
 			err := json.Unmarshal(js, ld)
 			if err != nil {
-				log.Printf("unmarshal login data error: %s", err.Error())
+				log.Error("unmarshal login data error: %s", err.Error())
 				return
 			}
 			ts.conns[addr.String()] = &ClientInfo{
 				UserId: ld.UserId,
 				conn:   conn,
 			}
-			log.Printf("remote login %s success, user id %d", addr.String(), ld.UserId)
+			log.Error("remote login %s success, user id %d", addr.String(), ld.UserId)
 			continue
 		}
 		if u, e := ts.conns[addr.String()]; e {
@@ -87,7 +101,7 @@ func (ts *TcpServer) handleConnection(conn net.Conn) {
 				Msg:    js,
 			}
 		} else {
-			log.Printf("illegal connection source: %s", addr.String())
+			log.Error("illegal connection source: %s", addr.String())
 			return
 		}
 	}
@@ -95,18 +109,18 @@ func (ts *TcpServer) handleConnection(conn net.Conn) {
 
 func (ts *TcpServer) Create(port int) {
 	ts.Port = port
-	log.Printf("creating tcp server at port %d...", ts.Port)
+	log.Error("creating tcp server at port %d...", ts.Port)
 	var err error
 
 	ts.listener, err = net.Listen("tcp", "0.0.0.0:"+strconv.Itoa(ts.Port))
 	if err != nil {
 		// handle error
-		log.Printf("Error: " + err.Error())
+		log.Error("Error: " + err.Error())
 		return
 	}
 
 	if ts.listener == nil {
-		log.Printf("Error: socket is nil")
+		log.Error("Error: socket is nil")
 		return
 	}
 
@@ -119,33 +133,43 @@ func (ts *TcpServer) OnClose() {
 	for addr, conn := range ts.conns {
 		err := conn.conn.Close()
 		if err != nil {
-			log.Printf("connection close to %s error: %s", addr, err.Error())
+			if !isNetClosedErr(err) {
+				log.Error("connection close to %s error: %s", addr, err.Error())
+			}
 			continue
 		}
-		log.Printf("connection close to %s success", addr)
+		log.Info("connection close to %s success", addr)
 	}
 	err := ts.listener.Close()
 	if err != nil {
-		log.Printf("TcpServer close error: %s\n", err.Error())
+		log.Error("TcpServer close error: %s\n", err.Error())
 		return
 	}
-	log.Printf("tcp server closed")
+	log.Info("tcp server closed")
 }
 
 func (ts *TcpServer) OnLoop() {
 	for {
 		conn, err := ts.listener.Accept()
 		if err != nil {
-			var netErr *net.OpError
-			if errors.As(err, &netErr) && errors.Is(netErr.Err, net.ErrClosed) {
+			if isNetClosedErr(err) {
 				// 因为listener被关闭，中断了Accept过程（已经停止服务）
-				log.Printf("tcp server Accept terminated because listener is closed")
+				log.Info("tcp server Accept terminated because listener is closed")
 				return
 			}
 			// 其他错误
-			log.Printf("tcp server Accept error: %s\n", err.Error())
+			log.Error("tcp server Accept error: %s\n", err.Error())
 			continue
 		}
 		go ts.handleConnection(conn)
 	}
+}
+
+func isNetClosedErr(err error) bool {
+	var netErr *net.OpError
+	return errors.As(err, &netErr) && errors.Is(netErr.Err, net.ErrClosed)
+}
+
+func isEof(err error) bool {
+	return errors.Is(err, io.EOF)
 }

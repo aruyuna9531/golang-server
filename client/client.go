@@ -3,7 +3,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -50,7 +49,6 @@ func main() {
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM)
 	gorExit := make(chan struct{})
 	go func() {
-		result := bytes.NewBuffer(nil)
 		buf := make([]byte, 1024)
 		for {
 			n, err := conn.Read(buf)
@@ -70,8 +68,7 @@ func main() {
 				gorExit <- struct{}{}
 				return
 			}
-			result.Write(buf[:n])
-			fmt.Println("client dial return: " + string(result.Bytes()))
+			fmt.Println("client dial return: " + string(buf[:n]))
 		}
 	}()
 	sig := <-sc

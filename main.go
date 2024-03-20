@@ -65,16 +65,16 @@ func main() {
 	tk := time.NewTicker(1 * time.Second)
 	defer tk.Stop()
 	startTime := time.Now()
-	log.Printf("server start at %s\n", startTime.Format("2006-01-02 15:04:05"))
+	log.Debug("server start at %s\n", startTime.Format("2006-01-02 15:04:05"))
 	for {
 		select {
 		case t := <-tk.C:
 			//fmt.Printf("now: %s\n", t.Format("2006-01-02 15:04:05"))
-			timer.GetInst().Trigger(t.Format("2006-01-02 15:04:05"))
+			timer.GetInst().Trigger(t.Unix())
 		case msg := <-mytcp.GetTcpSvr().GetMsgChan():
-			log.Printf("get msg from user %d, message: %s", msg.UserId, string(msg.Msg))
+			log.Info("get msg from user %d, message: %s", msg.UserId, string(msg.Msg))
 		case s := <-osChannel:
-			fmt.Printf("receive signal %v, exit\n", s)
+			log.Info("receive signal %v, exit\n", s)
 			return
 		}
 	}
