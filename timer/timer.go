@@ -65,7 +65,7 @@ func TimerTestCode() {
 	PushTrigger(time.Now().Add(20*time.Second).Unix(), Trigger{
 		Fun: func(now int64, _ interface{}, repeatCount int32) {
 			// 服务器每启动20秒给所有连接的客户端一个推送
-			mytcp.GetTcpSvr().PushNotify(fmt.Sprintf("程序已启动%d秒", (repeatCount+1)*20))
+			mytcp.GetTcpSvr().Broadcast([]byte(fmt.Sprintf("程序已启动%d秒", (repeatCount+1)*20)))
 		},
 		RepeatTime: 20 * time.Second,
 	})

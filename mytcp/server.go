@@ -7,28 +7,27 @@ import (
 	"io"
 	"net"
 	"strconv"
+	"sync/atomic"
 )
 
-// 假设这是客户端发过来的东西
-type ClientLogin struct {
-	UserId uint64 `json:"user_id"`
-}
-
+// 假设这是客户端发过来的东西（先不用protobuf）
 type ClientPack struct {
-	UserId uint64
-	Msg    []byte
+	SessionId uint64 `json:"session_id"`
+	Msg       []byte `json:"message"`
 }
 
 type ClientInfo struct {
-	UserId uint64
-	conn   net.Conn
+	SessionId uint64
+	RemoteIp  string
+	conn      net.Conn
 }
 
 type TcpServer struct {
-	Port       int
-	listener   net.Listener
-	conns      map[string]*ClientInfo
-	clientMsgs chan *ClientPack
+	Port          int
+	listener      net.Listener
+	conns         map[uint64]*ClientInfo // key - sessionid
+	clientMsgs    chan *ClientPack
+	SessionIdUsed atomic.Uint64
 }
 
 var tcpSvr = &TcpServer{}
@@ -38,10 +37,46 @@ func GetTcpSvr() *TcpServer {
 }
 
 // 服务器的主动推送
-func (ts *TcpServer) PushNotify(msg string) {
+func (ts *TcpServer) Broadcast(msg []byte) {
 	log.Debug("pushing notify to all clients, msg: %s, receive clients: %d", msg, len(ts.conns))
-	for _, conn := range ts.conns {
-		conn.conn.Write([]byte(msg))
+	b, err := json.Marshal(&ClientPack{
+		SessionId: 0,
+		Msg:       msg,
+	})
+	if err != nil {
+		log.Error("broadcast marshal error: %s", err.Error())
+		return
+	}
+	for sId, conn := range ts.conns {
+		_, err := conn.conn.Write(b)
+		if err != nil {
+			log.Error("broadcast to session id %d error: %s", sId, err.Error())
+			delete(ts.conns, sId)
+			return
+		}
+	}
+}
+
+func (ts *TcpServer) PushSessionResponse(sessionId uint64, msg []byte) {
+	cInfo, ok := ts.conns[sessionId]
+	if !ok {
+		log.Error("Session Id %d not found or removed", sessionId)
+		return
+	}
+
+	b, err := json.Marshal(&ClientPack{
+		SessionId: sessionId,
+		Msg:       msg,
+	})
+	if err != nil {
+		log.Error("Session Id %d marshal error: %s", sessionId, err.Error())
+		return
+	}
+
+	_, err = cInfo.conn.Write(b) // 这里可能已经不可写
+	if err != nil {
+		log.Error("Session Id %d write error: %s", sessionId, err.Error())
+		return
 	}
 }
 
@@ -51,15 +86,16 @@ func (ts *TcpServer) GetMsgChan() <-chan *ClientPack {
 
 func (ts *TcpServer) handleConnection(conn net.Conn) {
 	connCloseAcq := true
+	sessionId := uint64(0)
 	defer func() {
 		if connCloseAcq {
 			err := conn.Close()
 			if err != nil {
 				log.Error("handleConnection close client error: %s", err.Error())
 			}
+			delete(ts.conns, sessionId)
 		}
 	}()
-	defer delete(ts.conns, conn.RemoteAddr().String())
 	readbytes := make([]byte, 1024)
 	for {
 		readSize, err := conn.Read(readbytes)
@@ -80,25 +116,31 @@ func (ts *TcpServer) handleConnection(conn net.Conn) {
 		}
 		js := readbytes[:readSize]
 		addr := conn.RemoteAddr()
-		if _, e := ts.conns[addr.String()]; !e {
-			// 当然，这里还得判断一下是不是login data。这里先从略
-			ld := &ClientLogin{}
-			err := json.Unmarshal(js, ld)
-			if err != nil {
-				log.Error("unmarshal login data error: %s", err.Error())
-				return
-			}
-			ts.conns[addr.String()] = &ClientInfo{
-				UserId: ld.UserId,
-				conn:   conn,
-			}
-			log.Error("remote login %s success, user id %d", addr.String(), ld.UserId)
+		// 当然，这里还得判断一下是不是login data。这里先从略
+		ld := &ClientPack{}
+		err = json.Unmarshal(js, ld)
+		if err != nil {
+			log.Error("unmarshal login data error: %s", err.Error())
 			continue
 		}
-		if u, e := ts.conns[addr.String()]; e {
+		if string(ld.Msg) == "LoginReq" {
+			ts.SessionIdUsed.Add(1)
+			newSessionId := ts.SessionIdUsed.Load()
+			sessionId = newSessionId
+			newC := &ClientInfo{
+				SessionId: newSessionId,
+				RemoteIp:  addr.String(),
+				conn:      conn,
+			}
+			ts.conns[newSessionId] = newC
+			log.Info("remote login %s success, session id %d", addr.String(), newSessionId)
+			ts.PushSessionResponse(newSessionId, []byte("LoginResp"))
+			continue
+		}
+		if u, e := ts.conns[sessionId]; e {
 			ts.clientMsgs <- &ClientPack{
-				UserId: u.UserId,
-				Msg:    js,
+				SessionId: u.SessionId,
+				Msg:       js,
 			}
 		} else {
 			log.Error("illegal connection source: %s", addr.String())
@@ -124,21 +166,22 @@ func (ts *TcpServer) Create(port int) {
 		return
 	}
 
-	ts.conns = make(map[string]*ClientInfo)
+	ts.conns = make(map[uint64]*ClientInfo)
 	ts.clientMsgs = make(chan *ClientPack, 1000)
 }
 
 func (ts *TcpServer) OnClose() {
 	defer close(ts.clientMsgs)
-	for addr, conn := range ts.conns {
+	for sessId, conn := range ts.conns {
 		err := conn.conn.Close()
 		if err != nil {
 			if !isNetClosedErr(err) {
-				log.Error("connection close to %s error: %s", addr, err.Error())
+				log.Error("connection close to %s error: %s", sessId, err.Error())
 			}
 			continue
 		}
-		log.Info("connection close to %s success", addr)
+		log.Info("connection close to %s success", sessId)
+		delete(ts.conns, sessId)
 	}
 	err := ts.listener.Close()
 	if err != nil {

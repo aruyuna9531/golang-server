@@ -72,7 +72,7 @@ func main() {
 			//fmt.Printf("now: %s\n", t.Format("2006-01-02 15:04:05"))
 			timer.GetInst().Trigger(t.Unix())
 		case msg := <-mytcp.GetTcpSvr().GetMsgChan():
-			log.Info("get msg from user %d, message: %s", msg.UserId, string(msg.Msg))
+			log.Info("get msg from session %d, message: %s", msg.SessionId, string(msg.Msg))
 		case s := <-osChannel:
 			log.Info("receive signal %v, exit\n", s)
 			return
