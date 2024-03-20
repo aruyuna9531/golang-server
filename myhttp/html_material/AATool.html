@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>纯KA钱工具</title>
+</head>
+<body>
+    <script>
+        var i = 1
+        function addman() {
+            var div = document.getElementById('members')
+
+            var newSpan = document.createElement("span")
+            var nameTip = document.createElement('label')
+            nameTip.innerText="名字"
+            var nameInput = document.createElement("input")
+            nameInput.name="nameinput"+i
+            nameInput.value=i
+            var timeTip = document.createElement('label')
+            timeTip.innerText="时长（h）"
+            var timeHour = document.createElement("input")
+            // timeHour.type="number"
+            timeHour.name="timehour"+i
+            timeHour.value=1
+            newSpan.appendChild(nameTip)
+            newSpan.appendChild(nameInput)
+            newSpan.appendChild(timeTip)
+            newSpan.appendChild(timeHour)
+            newSpan.appendChild(document.createElement("br"))
+            div.appendChild(newSpan)
+            i++
+        }
+    </script>
+    <form action="/ktvaacalc" method="post">
+        <span>总额：<input name="totalprice" value="1"></span><br>
+        <button type="button" onclick="addman()">加人</button><br>
+        <div id="members">
+        </div>
+        <input type="submit">
+    </form>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>yuna的小站</title>
+</head>
+<body onload="startTime()">
+    <script>
+        function startTime(){
+            var today=new Date();
+            var y=today.getFullYear()
+            var M=today.getMonth()+1
+            var d=today.getDate()
+            var h=today.getHours();
+            var m=today.getMinutes();
+            var s=today.getSeconds();// 在小于10的数字前加一个‘0’
+            h=checkTime(h);
+            m=checkTime(m);
+            s=checkTime(s);
+            M=checkTime(M);
+            d=checkTime(d);
+            document.getElementById('txt').innerHTML=y+"-"+M+"-"+d+" "+h+":"+m+":"+s;
+            setTimeout(function(){startTime()},500);
+        }
+        function checkTime(i){
+            if (i<10){
+                i="0" + i;
+            }
+            return i;
+        }
+    </script>
+    <h1>目前施工中</h1>
+    由于目前本人不太会搞html（对CSS更是一窍不通）所以这个页面可能就只有白纸和黑字，最多加一些互动框
+    <br>
+    现在时间：<span id="txt"></span>
+</body>
+</html>
