@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go_svr/log"
 	"go_svr/mytcp"
+	"go_svr/proto_codes/rpc"
 	"time"
 )
 
@@ -65,7 +66,10 @@ func TimerTestCode() {
 	PushTrigger(time.Now().Add(20*time.Second).Unix(), Trigger{
 		Fun: func(now int64, _ interface{}, repeatCount int32) {
 			// 服务器每启动20秒给所有连接的客户端一个推送
-			mytcp.GetTcpSvr().Broadcast([]byte(fmt.Sprintf("程序已启动%d秒", (repeatCount+1)*20)))
+			mytcp.GetTcpSvr().Broadcast(rpc.MessageId_Msg_SC_Message, &rpc.SC_Message{
+				ErrCode: 0,
+				Message: fmt.Sprintf("程序已启动%d秒", (repeatCount+1)*20),
+			})
 		},
 		RepeatTime: 20 * time.Second,
 	})

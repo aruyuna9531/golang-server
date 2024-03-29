@@ -3,7 +3,12 @@ package mytcp
 import (
 	"encoding/json"
 	"errors"
+	"go_svr/define"
+	"go_svr/dependency"
 	"go_svr/log"
+	"go_svr/proto_codes/rpc"
+	"go_svr/utils"
+	"google.golang.org/protobuf/proto"
 	"io"
 	"net"
 	"strconv"
@@ -13,19 +18,32 @@ import (
 // 假设这是客户端发过来的东西（先不用protobuf）
 type ClientPack struct {
 	SessionId uint64 `json:"session_id"`
-	Msg       []byte `json:"message"`
+	OpenId    string `json:"open_id"`
+	MsgId     int32  `json:"message_id"`
+	Msg       []byte `json:"message_body"`
 }
 
-type ClientInfo struct {
-	SessionId uint64
-	RemoteIp  string
-	conn      net.Conn
+func (cp *ClientPack) Exec() {
+	alzer, ok := protoMaps[rpc.MessageId(cp.MsgId)]
+	if !ok {
+		log.Error("Exec error, message id %d not exist", cp.MsgId)
+		return
+	}
+	cl, ok := tcpSvr.conns[cp.SessionId]
+	if !ok {
+		log.Error("Exec error, conn session id %d not exist", cp.SessionId)
+		return
+	}
+	err := alzer.Exec(cl, cp.Msg)
+	if err != nil {
+		log.Error("exec error: %s", err.Error())
+	}
 }
 
 type TcpServer struct {
 	Port          int
 	listener      net.Listener
-	conns         map[uint64]*ClientInfo // key - sessionid
+	conns         map[uint64]*define.ClientInfo // key - sessionid
 	clientMsgs    chan *ClientPack
 	SessionIdUsed atomic.Uint64
 }
@@ -36,47 +54,60 @@ func GetTcpSvr() *TcpServer {
 	return tcpSvr
 }
 
+func init() {
+	dependency.SendToClient = tcpSvr.SendToClient
+}
+
+func (ts *TcpServer) SendToClient(cInfo *define.ClientInfo, messageId rpc.MessageId, message proto.Message) error {
+	b, err := proto.Marshal(message)
+	if err != nil {
+		return err
+	}
+
+	b2, err := json.Marshal(&ClientPack{
+		SessionId: cInfo.SessionId,
+		OpenId:    cInfo.OpenId,
+		MsgId:     int32(messageId),
+		Msg:       utils.CopySlice(b),
+	})
+	if err != nil {
+		log.Error("broadcast marshal error: %s", err.Error())
+		return err
+	}
+
+	_, err = cInfo.Conn.Write(b2) // 这里可能已经不可写
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // 服务器的主动推送
-func (ts *TcpServer) Broadcast(msg []byte) {
+func (ts *TcpServer) Broadcast(msgId rpc.MessageId, msg proto.Message) {
 	log.Debug("pushing notify to all clients, msg: %s, receive clients: %d", msg, len(ts.conns))
+	bs, err := proto.Marshal(msg)
+	if err != nil {
+		log.Error("broadcast marshal error: %s", err.Error())
+		return
+	}
+
 	b, err := json.Marshal(&ClientPack{
 		SessionId: 0,
-		Msg:       msg,
+		OpenId:    "",
+		MsgId:     int32(msgId),
+		Msg:       utils.CopySlice(bs),
 	})
 	if err != nil {
 		log.Error("broadcast marshal error: %s", err.Error())
 		return
 	}
 	for sId, conn := range ts.conns {
-		_, err := conn.conn.Write(b)
+		_, err := conn.Conn.Write(b)
 		if err != nil {
 			log.Error("broadcast to session id %d error: %s", sId, err.Error())
 			delete(ts.conns, sId)
 			return
 		}
-	}
-}
-
-func (ts *TcpServer) PushSessionResponse(sessionId uint64, msg []byte) {
-	cInfo, ok := ts.conns[sessionId]
-	if !ok {
-		log.Error("Session Id %d not found or removed", sessionId)
-		return
-	}
-
-	b, err := json.Marshal(&ClientPack{
-		SessionId: sessionId,
-		Msg:       msg,
-	})
-	if err != nil {
-		log.Error("Session Id %d marshal error: %s", sessionId, err.Error())
-		return
-	}
-
-	_, err = cInfo.conn.Write(b) // 这里可能已经不可写
-	if err != nil {
-		log.Error("Session Id %d write error: %s", sessionId, err.Error())
-		return
 	}
 }
 
@@ -86,7 +117,7 @@ func (ts *TcpServer) GetMsgChan() <-chan *ClientPack {
 
 func (ts *TcpServer) handleConnection(conn net.Conn) {
 	connCloseAcq := true
-	sessionId := uint64(0)
+	sessionId := ts.SessionIdUsed.Add(1)
 	defer func() {
 		if connCloseAcq {
 			err := conn.Close()
@@ -97,7 +128,15 @@ func (ts *TcpServer) handleConnection(conn net.Conn) {
 		}
 	}()
 	readbytes := make([]byte, 1024)
+	cl := &define.ClientInfo{
+		SessionId: sessionId,
+		RemoteIp:  conn.RemoteAddr().String(),
+		Conn:      conn,
+	}
+	log.Debug("new session %d established", sessionId)
+	ts.conns[sessionId] = cl
 	for {
+		// todo ↓ 注意包大小校验
 		readSize, err := conn.Read(readbytes)
 		if err != nil {
 			if isEof(err) {
@@ -115,37 +154,19 @@ func (ts *TcpServer) handleConnection(conn net.Conn) {
 			return
 		}
 		js := readbytes[:readSize]
-		addr := conn.RemoteAddr()
-		// 当然，这里还得判断一下是不是login data。这里先从略
 		ld := &ClientPack{}
 		err = json.Unmarshal(js, ld)
 		if err != nil {
-			log.Error("unmarshal login data error: %s", err.Error())
+			log.Error("unmarshal data error: %s", err.Error())
 			continue
 		}
-		if string(ld.Msg) == "LoginReq" {
-			ts.SessionIdUsed.Add(1)
-			newSessionId := ts.SessionIdUsed.Load()
-			sessionId = newSessionId
-			newC := &ClientInfo{
-				SessionId: newSessionId,
-				RemoteIp:  addr.String(),
-				conn:      conn,
-			}
-			ts.conns[newSessionId] = newC
-			log.Info("remote login %s success, session id %d", addr.String(), newSessionId)
-			ts.PushSessionResponse(newSessionId, []byte("LoginResp"))
-			continue
+		if cl.OpenId == "" {
+			cl.OpenId = ld.OpenId
 		}
-		if u, e := ts.conns[sessionId]; e {
-			ts.clientMsgs <- &ClientPack{
-				SessionId: u.SessionId,
-				Msg:       ld.Msg,
-			}
-		} else {
-			log.Error("illegal connection source: %s", addr.String())
-			return
+		if ld.SessionId == 0 {
+			ld.SessionId = sessionId
 		}
+		ts.clientMsgs <- ld
 	}
 }
 
@@ -166,14 +187,14 @@ func (ts *TcpServer) Create(port int) {
 		return
 	}
 
-	ts.conns = make(map[uint64]*ClientInfo)
+	ts.conns = make(map[uint64]*define.ClientInfo)
 	ts.clientMsgs = make(chan *ClientPack, 1000)
 }
 
 func (ts *TcpServer) OnClose() {
 	defer close(ts.clientMsgs)
 	for sessId, conn := range ts.conns {
-		err := conn.conn.Close()
+		err := conn.Conn.Close()
 		if err != nil {
 			if !isNetClosedErr(err) {
 				log.Error("connection close to %s error: %s", sessId, err.Error())

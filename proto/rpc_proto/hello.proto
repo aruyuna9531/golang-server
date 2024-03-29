@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+option go_package ="proto_codes/rpc";
+
+package proto;
+// The greeting service definition.
+service Greeter {
+  // Sends a greeting
+  rpc SayHello (CS_Login) returns (SC_Login) {}
+  // Sends another greeting
+  rpc SayHelloAgain (CS_Login) returns (SC_Login) {}
+}
+
+message CS_Login {
+  string openId = 1;  // 这个是在创建一个通行证账号时赋予这个账号在这个项目的识别码，相同账号的该码不会被改变。游戏登录操作需要该码找到玩家的role。
+}
+
+message SC_Login {
+  int32 errCode = 1;
+  uint64 sessionId = 2;
+  string openId = 3;
+  uint64 userId = 4;
+}
+
+message CS_Message {
+  string message = 1;
+}
+
+message SC_Message {
+  int32 errCode = 1;
+  string message = 2;
+}

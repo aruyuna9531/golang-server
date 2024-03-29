@@ -5,6 +5,7 @@ import (
 	"go_svr/log"
 	"go_svr/mytcp"
 	"go_svr/panic_recover"
+	"go_svr/redis"
 	"go_svr/timer"
 	"syscall"
 	"time"
@@ -31,7 +32,7 @@ func main() {
 	osChannel := make(chan os.Signal, 1)
 	signal.Notify(osChannel, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
 	// SIGINT: kill -2 ctrl+C属于此列。
-	// SIGKILL: kill -9 没有遗言的强杀（捕捉不到的信号，可能进程没了还会遗留一些现象，比如打点计时器还在跑）。不要乱用。Goland的停止按钮疑似SIGKILL（debug没抓到）
+	// SIGKILL: kill -9 没有遗言的强杀（捕捉不到的信号）。不要乱用。Goland的停止按钮疑似SIGKILL（debug没抓到）
 	// SIGTERM: kill -15 有遗言的退出
 
 	b, err := ioutil.ReadFile("conf/server.conf") // just pass the file name
@@ -54,6 +55,8 @@ func main() {
 	//db.GetDbPool().InitMysqlPool(conf)
 	//defer db.GetDbPool().OnClose()
 
+	redis.GetRedisCli().Init()
+
 	mytcp.GetTcpSvr().Create(ServerConf.TcpPort)
 	defer mytcp.GetTcpSvr().OnClose()
 
@@ -72,7 +75,7 @@ func main() {
 			//fmt.Printf("now: %s\n", t.Format("2006-01-02 15:04:05"))
 			timer.GetInst().Trigger(t.Unix())
 		case msg := <-mytcp.GetTcpSvr().GetMsgChan():
-			log.Info("get msg from session %d, message: %s", msg.SessionId, string(msg.Msg))
+			msg.Exec()
 		case s := <-osChannel:
 			log.Info("receive signal %v, exit\n", s)
 			return

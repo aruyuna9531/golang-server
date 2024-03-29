@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+option go_package ="proto_codes/db";
+
+package proto;
+
+message Person {
+  int32 id = 1;
+  string name = 2;
+}

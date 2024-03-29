@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+option go_package ="proto_codes/rpc";
+
+package proto;
+
+enum MessageId {
+  Msg_None = 0;
+  Msg_CS_Login = 1;
+  Msg_SC_Login = 2;
+  Msg_CS_Message = 3;
+  Msg_SC_Message = 4;
+}

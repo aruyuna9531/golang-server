@@ -55,6 +55,20 @@ func (r *RedisCli) Get(K string) string {
 	return res
 }
 
+func (r *RedisCli) Incr(K string) int64 {
+	cmd := r.c.Incr(context.Background(), K)
+	if cmd.Err() != nil {
+		panic(cmd.Err())
+	}
+	res, err := cmd.Result()
+	if errors.Is(err, redis.Nil) {
+		return 0
+	} else if err != nil {
+		panic(cmd.Err())
+	}
+	return res
+}
+
 func (r *RedisCli) Test() {
 	r.Set("1", "1")
 	log.Printf("%s", r.Get("1"))

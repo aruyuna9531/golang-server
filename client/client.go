@@ -5,8 +5,10 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"flag"
 	"go_svr/log"
-	"go_svr/utils"
+	"go_svr/proto_codes/rpc"
+	"google.golang.org/protobuf/proto"
 	"io"
 	"math/rand"
 	"net"
@@ -17,62 +19,68 @@ import (
 )
 
 type Msg struct {
-	SessionId uint64 `json:"session_id"`
-	Message   []byte `json:"message"`
+	SessionId   uint64 `json:"session_id"`
+	OpenId      string `json:"open_id"`
+	MessageId   int32  `json:"message_id"`
+	MessageBody []byte `json:"message_body"`
 }
 
 type client struct {
 	SessionId uint64
+	UserId    uint64
+	OpenId    string
 	Alive     bool
 	conn      net.Conn
 }
 
 var cl = &client{SessionId: 0}
 
-func (c *client) Send(msg []byte) {
-	if c.SessionId == 0 {
+func (c *client) Send(id int32, msg proto.Message, forceSend bool) {
+	// 这里id类型定义为int32——因为服务器不能假设客户端传过来的值一定是从枚举来，实践中往往会使用通用数值类型
+	if c.SessionId == 0 && !forceSend {
 		log.Error("client not ready login")
 		return
 	}
-	m := &Msg{
-		SessionId: c.SessionId,
-		Message:   utils.CopySlice(msg),
-	}
-	b, err := json.Marshal(m)
+	//m := &Msg{
+	//	SessionId: c.SessionId,
+	//	Message:   utils.CopySlice(msg),
+	//}
+	b, err := proto.Marshal(msg)
 	if err != nil {
 		log.Error("send marshal error: %s", err.Error())
 		return
 	}
-	_, err = c.conn.Write(b)
+	m := &Msg{
+		SessionId:   c.SessionId,
+		OpenId:      c.OpenId,
+		MessageId:   id,
+		MessageBody: b,
+	}
+	bb, err := json.Marshal(m)
+	if err != nil {
+		log.Error("send marshal error: %s", err.Error())
+		return
+	}
+	_, err = c.conn.Write(bb)
 	if err != nil {
 		log.Error("send error: %s", err.Error())
 		return
 	}
 }
 
+var open = flag.String("openid", "default", "定义openid")
+
 func main() {
+	flag.Parse()
 	conn, err := net.Dial("tcp", "127.0.0.1:9000")
 	if err != nil {
 		log.Fatal("client dial err: " + err.Error())
 	}
+	cl.OpenId = *open
 	cl.conn = conn
+	log.Debug("open id = %s", cl.OpenId)
 
-	loginData := &Msg{
-		SessionId: 0, // 登录的时候还没有这个
-		Message:   []byte("LoginReq"),
-	}
-
-	b, err := json.Marshal(loginData)
-	if err != nil {
-		log.Error("marshal error: %v\n", err)
-		return
-	}
-
-	_, err = conn.Write(b)
-	if err != nil {
-		log.Error("error: %v", err)
-		return
-	}
+	cl.Send(int32(rpc.MessageId_Msg_CS_Login), &rpc.CS_Login{}, true)
 
 	hbSig := make(chan struct{}, 1)
 	go func() {
@@ -86,7 +94,7 @@ func main() {
 				for i := 0; i < 9; i++ {
 					b[i] = byte(rand.Int()%10) + 'a'
 				}
-				cl.Send(b)
+				cl.Send(int32(rpc.MessageId_Msg_CS_Message), &rpc.CS_Message{Message: string(b)}, false)
 				time.Sleep(3 * time.Second)
 			}
 		}
@@ -121,18 +129,27 @@ func main() {
 				log.Error("unmarshal error: %s", err.Error())
 				continue
 			}
-			if string(msg.Message) == "LoginResp" {
-				cl.SessionId = msg.SessionId
-				cl.Alive = true
-				log.Info("Login OK, session id: %d", cl.SessionId)
-			} else {
-				if msg.SessionId == 0 {
-					log.Debug("Server pushed broadcast message: %s", msg.Message)
-				} else if msg.SessionId == cl.SessionId {
-					log.Debug("Server response message: %s", msg.Message)
-				} else {
-					log.Error("Server response session id illegal: %d (self %d)", msg.SessionId, cl.SessionId)
+			// ↓懒得做解析器了
+			switch rpc.MessageId(msg.MessageId) {
+			case rpc.MessageId_Msg_SC_Login:
+				loginP := &rpc.SC_Login{}
+				err = proto.Unmarshal(msg.MessageBody, loginP)
+				if err != nil {
+					log.Error("unmarshal error: %s", err.Error())
+					continue
 				}
+				cl.SessionId = loginP.SessionId
+				cl.UserId = loginP.UserId
+				cl.Alive = true
+				log.Info("Login OK, session id: %d, user id %d", cl.SessionId, loginP.UserId)
+			case rpc.MessageId_Msg_SC_Message:
+				mp := &rpc.SC_Message{}
+				err = proto.Unmarshal(msg.MessageBody, mp)
+				if err != nil {
+					log.Error("unmarshal error: %s", err.Error())
+					continue
+				}
+				log.Info("receive message from server: %s", mp.Message)
 			}
 		}
 	}()
