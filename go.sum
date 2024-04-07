@@ -1,3 +1,5 @@
+github.com/aruyuna9531/skiplist v0.0.0-20240328141651-f59939efd376 h1:jEqR0cWP0a8FE850Kw74kOnhTSyUs5AteQiRCesPWUI=
+github.com/aruyuna9531/skiplist v0.0.0-20240328141651-f59939efd376/go.mod h1:YM+3Zb8dEw+8XPkqUue+X8hDyrbpCQAmp3WokVQYOxo=
 github.com/bsm/ginkgo/v2 v2.12.0 h1:Ny8MWAHyOepLGlLKYmXG4IEkioBysk6GpaRTLC8zwWs=
 github.com/bsm/gomega v1.27.10 h1:yeMWxP2pV2fG3FgAODIY8EiRE3dy0aeFYt4l7wh6yKA=
 github.com/bytedance/sonic v1.5.0/go.mod h1:ED5hyg4y6t3/9Ku1R6dU/4KyJ48DZ4jPhfY1O2AihPM=

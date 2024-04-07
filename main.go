@@ -5,7 +5,6 @@ import (
 	"go_svr/log"
 	"go_svr/mytcp"
 	"go_svr/panic_recover"
-	"go_svr/redis"
 	"go_svr/timer"
 	"syscall"
 	"time"
@@ -55,7 +54,7 @@ func main() {
 	//db.GetDbPool().InitMysqlPool(conf)
 	//defer db.GetDbPool().OnClose()
 
-	redis.GetRedisCli().Init()
+	//redis.GetRedisCli().Init()
 
 	mytcp.GetTcpSvr().Create(ServerConf.TcpPort)
 	defer mytcp.GetTcpSvr().OnClose()
@@ -73,7 +72,7 @@ func main() {
 		select {
 		case t := <-tk.C:
 			//fmt.Printf("now: %s\n", t.Format("2006-01-02 15:04:05"))
-			timer.GetInst().Trigger(t.Unix())
+			timer.GetInst().Trigger(t.UnixMilli())
 		case msg := <-mytcp.GetTcpSvr().GetMsgChan():
 			msg.Exec()
 		case s := <-osChannel:
