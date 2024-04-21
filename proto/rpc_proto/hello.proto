@@ -30,3 +30,7 @@ message SC_Message {
   int32 errCode = 1;
   string message = 2;
 }
+
+message SC_DisconnectNotify {
+  int32 reason = 1;
+}

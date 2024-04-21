@@ -1,4 +1,4 @@
-package mytcp
+package framebase
 
 import (
 	"fmt"

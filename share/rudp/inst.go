@@ -2,7 +2,10 @@ package rudp
 
 import (
 	"fmt"
+	"go_svr/dependency"
 	"go_svr/log"
+	"go_svr/proto_codes/rpc"
+	"google.golang.org/protobuf/proto"
 	"net"
 )
 
@@ -40,13 +43,28 @@ func (ri *RudpInst) Loop() {
 			return
 		}
 		ri.rconn[rconn.remoteAddr.String()] = rconn
+		go ri.Conn(rconn)
+	}
+}
+
+func (ri *RudpInst) Conn(rconn *RudpConn) {
+	for {
 		data := make([]byte, MAX_PACKAGE)
 		n, err := rconn.Read(data)
 		if err != nil {
 			fmt.Printf("read err %s\n", err)
 			return
 		}
-		log.Debug("rudp data: %s", data[:n])
-		rconn.Write([]byte(fmt.Sprintf("received message: %s", data[:n])))
+		r := &rpc.InputData{}
+		err = proto.Unmarshal(data[:n], r) // todo 看看能不能省掉这一步
+		if err != nil {
+			log.Error("unmarshal error")
+			continue
+		}
+		dependency.PushCmd(r)
 	}
+}
+
+func (ri *RudpInst) Broadcast(contents []byte) {
+	ri.listener.RudpBroadcast(contents)
 }

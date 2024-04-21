@@ -10,4 +10,20 @@ enum MessageId {
   Msg_SC_Login = 2;
   Msg_CS_Message = 3;
   Msg_SC_Message = 4;
+  Msg_SC_DisconnectNotify = 5;
+
+  Msg_BEGIN = 100;
+  Msg_Connect     = 101;    //连接(客户端发来第一个消息)
+  Msg_Heartbeat   = 102;    //心跳(服务端返回Connect成功之后每隔1秒发送一个心跳包)
+
+  Msg_JoinRoom    = 103;   //进入
+  Msg_Progress    = 104;   //进度
+  Msg_Ready       = 105;   //准备
+  Msg_Start       = 106;   //开始
+  Msg_Frame       = 107;   //帧数据
+  Msg_Input       = 108;   //输入
+  Msg_Result      = 109;   //结果
+  Msg_Close      = 110;   //房间关闭
+
+  Msg_END = 255;
 }

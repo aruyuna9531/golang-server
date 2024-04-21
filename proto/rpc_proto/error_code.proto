@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+option go_package ="proto_codes/rpc";
+
+package proto;
+
+//错误码
+enum ErrorCode {
+  ERR_Ok          = 0;    //OK
+  ERR_NoPlayer    = 1;    //没有这个玩家
+  ERR_NoRoom      = 2;    //没有房间
+  ERR_RoomState   = 3;    //房间状态不正确
+  ERR_Token       = 4;    //Token验证失败
+}

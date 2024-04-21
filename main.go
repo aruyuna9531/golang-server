@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"go_svr/framebase"
+	"go_svr/lock_step"
 	"go_svr/log"
 	"go_svr/panic_recover"
 	"go_svr/share/rudp"
@@ -37,7 +38,7 @@ func pprof() {
 }
 
 func main() {
-	defer panic_recover.PanicRecoverTrace()
+	defer panic_recover.PanicRecoverTrace() // TODO 放这里没用 换个地方
 	go pprof()
 
 	osChannel := make(chan os.Signal, 1)
@@ -74,6 +75,7 @@ func main() {
 	go framebase.GetTcpSvr().OnLoop()
 
 	rudp.GetInst().Init()
+	lock_step.GetInst().Init()
 
 	//go myhttp.CreateHttpServer(ServerConf.HttpPort)
 	timer.TimerTestCode()

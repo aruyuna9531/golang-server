@@ -87,3 +87,22 @@ func (s *SortedSet[Key, Value]) RemoveByRank(rank int32) (originElement Value, e
 func (s *SortedSet[Key, Value]) GetCount() int32 {
 	return s.s.GetElementsCount()
 }
+
+func (s *SortedSet[Key, Value]) GetRange(start, end int32) (res []Value, err error) {
+	ret, err := s.s.GetRange(start, end)
+	if err != nil {
+		return
+	}
+	for _, v := range ret {
+		res = append(res, s.dict[v.Key()])
+	}
+	return
+}
+
+func (s *SortedSet[Key, Value]) GetAll() []Value {
+	ret := make([]Value, 0)
+	for _, v := range s.dict {
+		ret = append(ret, v)
+	}
+	return ret
+}

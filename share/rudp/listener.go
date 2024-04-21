@@ -52,6 +52,7 @@ func (this *RudpListener) CloseAllRudp() {
 	this.rudpConnMap = make(map[string]*RudpConn)
 	this.lock.Unlock()
 }
+
 func (this *RudpListener) AcceptRudp() (*RudpConn, error) {
 	select {
 	case c := <-this.newRudpConn:
@@ -83,5 +84,14 @@ func (this *RudpListener) run() {
 		bts := make([]byte, n)
 		copy(bts, data[:n])
 		rudpConn.in <- bts
+	}
+}
+
+func (this *RudpListener) RudpBroadcast(contents []byte) {
+	for addr, conn := range this.rudpConnMap {
+		_, err := conn.Write(contents)
+		if err != nil {
+			log.Error("Rudp broadcast for addr %s error: %s", addr, err.Error())
+		}
 	}
 }

@@ -29,6 +29,21 @@ func (q *Quaternion) Inverse() *Quaternion {
 	}
 }
 
+// 转换矩阵
+func (q *Quaternion) ToMatrix() *Matrix {
+	ret := &Matrix{}
+	x := q.v.X
+	y := q.v.Y
+	z := q.v.Z
+	w := q.s
+	ret.Init(
+		[]float64{1 - 2*y*y - 2*z*z, 2*x*y + 2*z*w, 2*x*z - 2*y*w},
+		[]float64{2*x*y - 2*z*w, 1 - 2*x*x - 2*z*z, 2*y*z + 2*x*w},
+		[]float64{2*x*z + 2*y*w, 2*y*z - 2*x*w, 1 - 2*x*x - 2*y*y},
+	)
+	return ret
+}
+
 func QuaternionsAdd(qs ...*Quaternion) *Quaternion {
 	ret := &Quaternion{}
 	for _, q := range qs {
