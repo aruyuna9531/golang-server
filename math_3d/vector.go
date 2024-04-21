@@ -21,9 +21,27 @@ func (v *Vector) Normalize() *Vector {
 	}
 }
 
+func (v *Vector) MulNum(num float64) *Vector {
+	return &Vector{
+		X: v.X * num,
+		Y: v.Y * num,
+		Z: v.Z * num,
+	}
+}
+
 func (v *Vector) ToMatrix() *Matrix {
 	ret := &Matrix{}
 	ret.Init([]float64{v.X, v.Y, v.Z, 1}) // w = 1
+	return ret
+}
+
+func VectorAdd(vectors ...*Vector) *Vector {
+	ret := &Vector{}
+	for _, v := range vectors {
+		ret.X += v.X
+		ret.Y += v.Y
+		ret.Z += v.Z
+	}
 	return ret
 }
 

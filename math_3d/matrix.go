@@ -161,21 +161,31 @@ func MatrixIsSame(a, b *Matrix) bool {
 }
 
 // 矩阵加
-func MatrixAdd(a, b *Matrix) *Matrix {
-	if a.rows != b.rows || a.columns != b.columns {
-		panic(fmt.Sprintf("illegal matrix add of size %d×%d and %d×%d", a.rows, a.columns, b.rows, b.columns))
+func MatrixAdd(args ...*Matrix) *Matrix {
+	if len(args) == 0 {
+		return nil
 	}
-	cm := make([][]float64, a.rows)
-	for i, va := range a.m {
-		tmp := make([]float64, len(va))
-		for j := 0; j < len(va); j++ {
-			tmp[j] = a.m[i][j] + b.m[i][j]
+	rows := args[0].rows
+	columns := args[0].columns
+	for _, m := range args {
+		if m.rows != rows || m.columns != columns {
+			panic(fmt.Sprintf("illegal matrix add of size %d×%d and %d×%d", rows, columns, m.rows, m.columns))
 		}
-		cm[i] = tmp
+	}
+	cm := make([][]float64, rows)
+	for i := 0; i < rows; i++ {
+		cm[i] = make([]float64, columns)
+	}
+	for _, m := range args {
+		for i, va := range m.m {
+			for j, vb := range va {
+				cm[i][j] += vb
+			}
+		}
 	}
 	return &Matrix{
-		rows:    a.rows,
-		columns: a.columns,
+		rows:    rows,
+		columns: columns,
 		m:       cm,
 	}
 }

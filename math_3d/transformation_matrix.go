@@ -52,3 +52,25 @@ func ScaleMatrix(Xscale, Yscale, Zscale float64) *Matrix {
 }
 
 // 转换顺序：Scale→Rotation→Translation（SRT）顺序调整会出现结果不满足期望的情况
+
+// -------------------------
+
+// RotationBy v向量绕任意axisVec向量旋转rad弧度得到的向量（复杂，建议引入四元数（quaternion））
+func (v *Vector) RotationBy(axisVec *Vector, rad float64) *Vector {
+	axisNor := axisVec.Normalize()
+	m1 := &Matrix{}
+	m1.Init([]float64{1, 0, 0}, []float64{0, 1, 0}, []float64{0, 0, 1})
+	m2 := &Matrix{}
+	m2.Init([]float64{0, -axisNor.Z, axisNor.Y}, []float64{axisNor.Z, 0, -axisNor.X}, []float64{-axisNor.Y, axisNor.X, 0})
+	m3 := &Matrix{}
+	m3.Init(
+		[]float64{axisNor.X * axisNor.X, axisNor.X * axisNor.Y, axisNor.X * axisNor.Z},
+		[]float64{axisNor.Y * axisNor.X, axisNor.Y * axisNor.Y, axisNor.Y * axisNor.Z},
+		[]float64{axisNor.Z * axisNor.X, axisNor.Z * axisNor.Y, axisNor.Z * axisNor.Z},
+	)
+	rotationMatrix := MatrixAdd(MatrixMulNum(m1, math.Cos(rad)), MatrixMulNum(m2, math.Sin(rad)), MatrixMulNum(m3, 1-math.Cos(rad)))
+	vv := &Matrix{}
+	vv.Init([]float64{v.X, v.Y, v.Z})
+	final := MatrixMulMatrix(vv, rotationMatrix)
+	return &Vector{X: final.m[0][0], Y: final.m[0][1], Z: final.m[0][2]}
+}
