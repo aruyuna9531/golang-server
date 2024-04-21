@@ -3,8 +3,8 @@ package timer
 import (
 	"fmt"
 	"github.com/aruyuna9531/skiplist"
+	"go_svr/framebase"
 	"go_svr/log"
-	"go_svr/mytcp"
 	"go_svr/proto_codes/rpc"
 	"go_svr/utils/sorted_set"
 	"sync/atomic"
@@ -119,7 +119,7 @@ func GetInst() *Timer {
 func TimerTestCode() {
 	id := GetInst().PushNewTimerTrigger(0, 20000, func(now int64, repeatCount int32, _ ...interface{}) {
 		// 服务器每启动20秒给所有连接的客户端一个推送
-		mytcp.GetTcpSvr().Broadcast(rpc.MessageId_Msg_SC_Message, &rpc.SC_Message{
+		framebase.GetTcpSvr().Broadcast(rpc.MessageId_Msg_SC_Message, &rpc.SC_Message{
 			ErrCode: 0,
 			Message: fmt.Sprintf("程序已启动%d秒", (repeatCount+1)*20),
 		})
