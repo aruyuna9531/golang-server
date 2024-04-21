@@ -150,6 +150,14 @@ func main() {
 					continue
 				}
 				log.Info("receive message from server: %s", mp.Message)
+			case rpc.MessageId_Msg_SC_DisconnectNotify:
+				mp := &rpc.SC_DisconnectNotify{}
+				err = proto.Unmarshal(msg.MessageBody, mp)
+				if err != nil {
+					log.Error("unmarshal error: %s", err.Error())
+					continue
+				}
+				log.Info("server actively disconnected, reason: %d", mp.Reason)
 			}
 		}
 	}()

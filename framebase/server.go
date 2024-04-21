@@ -1,15 +1,14 @@
-package mytcp
+package framebase
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 	"go_svr/define"
 	"go_svr/dependency"
 	"go_svr/log"
 	"go_svr/proto_codes/rpc"
 	"go_svr/utils"
 	"google.golang.org/protobuf/proto"
-	"io"
 	"net"
 	"strconv"
 	"sync/atomic"
@@ -44,6 +43,7 @@ type TcpServer struct {
 	Port          int
 	listener      net.Listener
 	conns         map[uint64]*define.ClientInfo // key - sessionid
+	open2conn     map[string]*define.ClientInfo
 	clientMsgs    chan *ClientPack
 	SessionIdUsed atomic.Uint64
 }
@@ -56,6 +56,7 @@ func GetTcpSvr() *TcpServer {
 
 func init() {
 	dependency.SendToClient = tcpSvr.SendToClient
+	dependency.Disconnect = tcpSvr.ForceDisconnect
 }
 
 func (ts *TcpServer) SendToClient(cInfo *define.ClientInfo, messageId rpc.MessageId, message proto.Message) error {
@@ -139,12 +140,12 @@ func (ts *TcpServer) handleConnection(conn net.Conn) {
 		// todo ↓ 注意包大小校验
 		readSize, err := conn.Read(readbytes)
 		if err != nil {
-			if isEof(err) {
+			if utils.IsEof(err) {
 				// client主动发起的关闭
 				log.Info("client actively closed")
 				return
 			}
-			if isNetClosedErr(err) {
+			if utils.IsNetClosedErr(err) {
 				// 服务器在其他地方主动关闭了connection（比如OnClose）导致Read阻塞解除并返回error
 				log.Error("connection already closed")
 				connCloseAcq = false
@@ -162,6 +163,7 @@ func (ts *TcpServer) handleConnection(conn net.Conn) {
 		}
 		if cl.OpenId == "" {
 			cl.OpenId = ld.OpenId
+			ts.open2conn[cl.OpenId] = cl
 		}
 		if ld.SessionId == 0 {
 			ld.SessionId = sessionId
@@ -188,6 +190,7 @@ func (ts *TcpServer) Create(port int) {
 	}
 
 	ts.conns = make(map[uint64]*define.ClientInfo)
+	ts.open2conn = make(map[string]*define.ClientInfo)
 	ts.clientMsgs = make(chan *ClientPack, 1000)
 }
 
@@ -196,7 +199,7 @@ func (ts *TcpServer) OnClose() {
 	for sessId, conn := range ts.conns {
 		err := conn.Conn.Close()
 		if err != nil {
-			if !isNetClosedErr(err) {
+			if !utils.IsNetClosedErr(err) {
 				log.Error("connection close to %s error: %s", sessId, err.Error())
 			}
 			continue
@@ -216,7 +219,7 @@ func (ts *TcpServer) OnLoop() {
 	for {
 		conn, err := ts.listener.Accept()
 		if err != nil {
-			if isNetClosedErr(err) {
+			if utils.IsNetClosedErr(err) {
 				// 因为listener被关闭，中断了Accept过程（已经停止服务）
 				log.Info("tcp server Accept terminated because listener is closed")
 				return
@@ -229,11 +232,15 @@ func (ts *TcpServer) OnLoop() {
 	}
 }
 
-func isNetClosedErr(err error) bool {
-	var netErr *net.OpError
-	return errors.As(err, &netErr) && errors.Is(netErr.Err, net.ErrClosed)
-}
-
-func isEof(err error) bool {
-	return errors.Is(err, io.EOF)
+func (ts *TcpServer) ForceDisconnect(openId string) error {
+	cl, ok := ts.open2conn[openId]
+	if !ok {
+		return fmt.Errorf("open id %s is not connected", openId)
+	}
+	defer delete(ts.open2conn, openId)
+	err := ts.SendToClient(cl, rpc.MessageId_Msg_SC_DisconnectNotify, &rpc.SC_DisconnectNotify{Reason: 1})
+	if err != nil {
+		return err
+	}
+	return cl.Conn.Close()
 }

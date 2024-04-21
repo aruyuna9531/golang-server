@@ -7,3 +7,4 @@ import (
 )
 
 var SendToClient func(info *define.ClientInfo, messageId rpc.MessageId, message proto.Message) error
+var Disconnect func(openId string) error
