@@ -32,6 +32,7 @@ func main() {
 	go func() {
 		for {
 			time.Sleep(1*time.Second + time.Duration(rand.Int()%1000)*time.Millisecond) // 随机睡1到2秒
+			// todo ↓这东西得存下来 对面要求重发时要发的
 			r := &rpc.InputData{
 				Id:         uint64(a.Add(1)),
 				Sid:        rand.Int31() % 5,
